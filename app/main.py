@@ -24,7 +24,7 @@ def home():
     })
 
 
-@app.route("/relay")
+@app.route("/relay", methods=['POST'])
 def relay():
     if not hasattr(request, 'json_data'):
         host = request.form.get('host')
