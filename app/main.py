@@ -45,8 +45,6 @@ def relay():
         is_pasv = bool(json_data['is_pasv'])
         file_name = json_data['file_name']
         message = json_data['message']
-    if not directory:
-        directory = "/"
     in_memory_file = io.BytesIO(message.encode('utf-8'))
     file_name_without_extension, file_extension = os.path.splitext(file_name)
     try:
@@ -56,7 +54,8 @@ def relay():
             ftp.login(user, password)
             ftp.set_pasv(is_pasv)
             # Change to the remote directory
-            ftp.cwd(directory)
+            if not directory:
+                ftp.cwd(directory)
             ftp.storbinary(f'STOR {file_name_without_extension}.tmp', in_memory_file)
             ftp.rename(f'{file_name_without_extension}.tmp', f'{file_name_without_extension}.{file_extension}')
     except error_perm as e:
