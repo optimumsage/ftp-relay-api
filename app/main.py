@@ -57,7 +57,7 @@ def relay():
             if not directory:
                 ftp.cwd(directory)
             ftp.storbinary(f'STOR {file_name_without_extension}.tmp', in_memory_file)
-            ftp.rename(f'{file_name_without_extension}.tmp', f'{file_name_without_extension}.{file_extension}')
+            ftp.rename(f'{file_name_without_extension}.tmp', f'{file_name_without_extension}{file_extension}')
     except error_perm as e:
         return jsonify({
             "status": False,
