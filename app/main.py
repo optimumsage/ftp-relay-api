@@ -1,5 +1,11 @@
 import io
 import os
+import warnings
+
+# Suppress cryptography deprecation warnings before importing paramiko/pysftp
+warnings.filterwarnings('ignore', message='.*TripleDES.*')
+warnings.filterwarnings('ignore', message='.*Failed to load HostKeys.*')
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ftplib import FTP, error_perm
