@@ -3,6 +3,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ftplib import FTP, error_perm
+import pysftp
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -66,6 +67,54 @@ def relay():
         })
     # Close the in-memory file
     in_memory_file.close()
+
+    return jsonify({
+        "status": True,
+        "message": "message has been relayed",
+    })
+
+
+@app.route("/sftp/relay", methods=['POST'])
+def sftp_relay():
+    if not hasattr(request, 'json_data'):
+        host = request.form.get('host')
+        port = int(request.form.get('port'))
+        user = request.form.get('user')
+        password = request.form.get('password')
+        directory = request.form.get('directory')
+        file_name = request.form.get('file_name')
+        message = request.form.get('message')
+    else:
+        json_data = request.json_data
+        host = json_data['host']
+        port = int(json_data['port'])
+        user = json_data['user']
+        password = json_data['password']
+        directory = json_data['directory']
+        file_name = json_data['file_name']
+        message = json_data['message']
+    
+    in_memory_file = io.BytesIO(message.encode('utf-8'))
+    
+    try:
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
+        with pysftp.Connection(host, username=user, password=password, port=port, cnopts=cnopts) as sftp:
+            if directory:
+                sftp.cwd(directory)
+            
+            with sftp.open(f'{file_name}.tmp', 'wb') as f:
+                f.write(in_memory_file.getvalue())
+            sftp.rename(f'{file_name}.tmp', file_name)
+
+    except Exception as e:
+        return jsonify({
+            "status": False,
+            "message": "Message sending failed",
+            "error": str(e),
+        })
+    finally:
+        in_memory_file.close()
 
     return jsonify({
         "status": True,
