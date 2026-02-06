@@ -49,24 +49,26 @@ def relay():
     in_memory_file = io.BytesIO(message.encode('utf-8'))
     file_name_without_extension, file_extension = os.path.splitext(file_name)
     try:
-        with FTP(host) as ftp:
-            # Log in to the FTP server
+        with FTP() as ftp:
+            # Connect and log in to the FTP server
             ftp.connect(host, port)
             ftp.login(user, password)
             ftp.set_pasv(is_pasv)
             # Change to the remote directory
-            if not directory:
+            if directory:
                 ftp.cwd(directory)
             ftp.storbinary(f'STOR {file_name_without_extension}.tmp', in_memory_file)
             ftp.rename(f'{file_name_without_extension}.tmp', f'{file_name_without_extension}{file_extension}')
-    except error_perm as e:
+    except Exception as e:
+        error_msg = str(e) if str(e) else f"{type(e).__name__}: Connection error"
         return jsonify({
             "status": False,
             "message": "Message sending failed",
-            "error": str(e),
+            "error": error_msg,
         })
-    # Close the in-memory file
-    in_memory_file.close()
+    finally:
+        # Close the in-memory file
+        in_memory_file.close()
 
     return jsonify({
         "status": True,
@@ -84,6 +86,8 @@ def sftp_relay():
         directory = request.form.get('directory')
         file_name = request.form.get('file_name')
         message = request.form.get('message')
+        private_key = request.form.get('private_key')
+        private_key_pass = request.form.get('private_key_pass')
     else:
         json_data = request.json_data
         host = json_data['host']
@@ -93,13 +97,31 @@ def sftp_relay():
         directory = json_data['directory']
         file_name = json_data['file_name']
         message = json_data['message']
+        private_key = json_data.get('private_key')
+        private_key_pass = json_data.get('private_key_pass')
     
     in_memory_file = io.BytesIO(message.encode('utf-8'))
     
     try:
         cnopts = pysftp.CnOpts()
         cnopts.hostkeys = None
-        with pysftp.Connection(host, username=user, password=password, port=port, cnopts=cnopts) as sftp:
+
+        connection_args = {
+            'host': host,
+            'username': user,
+            'port': port,
+            'cnopts': cnopts
+        }
+
+        if private_key:
+            private_key_file = io.StringIO(private_key)
+            connection_args['private_key'] = private_key_file
+            if private_key_pass:
+                connection_args['private_key_pass'] = private_key_pass
+        else:
+            connection_args['password'] = password
+        
+        with pysftp.Connection(**connection_args) as sftp:
             if directory:
                 sftp.cwd(directory)
             
